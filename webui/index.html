@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8" />
+<title>YuiAI Chat</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+<style>
+body {
+    margin: 0;
+    background: #0f172a;
+    font-family: system-ui, sans-serif;
+    color: #e5e7eb;
+    height: 100vh;
+}
+
+  /* Wrapper begrenzt die Breite auf Desktop */
+  #wrapper {
+    width: 100%;
+    max-width: 850px;   /* Desktop-Breite */
+    margin: 0 auto;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+
+  /* Chat container */
+  #chat {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    padding: 20px;
+    box-sizing: border-box;
+  }
+
+  /* Chat bubble base */
+  .bubble {
+    max-width: 70%;
+    padding: 12px 14px;
+    margin-bottom: 12px;
+    border-radius: 12px;
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-size: 1rem;
+    line-height: 1.4;
+  }
+
+  /* User bubble (links) */
+  .user {
+    background: #1e293b;
+    margin-right: auto;
+    border: 1px solid #334155;
+  }
+
+  /* AI bubble (rechts) */
+  .ai {
+    background: #4f46e5;
+    color: white;
+    margin-left: auto;
+    border: 1px solid #4338ca;
+    position: relative;
+  }
+
+  .tts-btn {
+    margin-top: 6px;
+    background: rgba(255,255,255,0.15);
+    border: none;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.8rem;
+  }
+
+  /* Input area */
+  #inputArea {
+    flex-shrink: 0;
+    padding: 12px;
+    display: flex;
+    gap: 8px;
+  }
+
+  textarea {
+    flex: 1;
+    background: #0f172a;
+    color: #e5e7eb;
+    border: 1px solid #334155;
+    border-radius: 8px;
+    padding: 10px;
+    font-size: 1rem;
+    resize: none;
+    height: 60px;
+  }
+
+  button {
+    background: #4f46e5;
+    border: none;
+    color: white;
+    padding: 0 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1rem;
+  }
+
+  #thinking {
+    animation: pulse 1.4s infinite;
+}
+
+@keyframes pulse {
+    0%   { opacity: 0.4; }
+    50%  { opacity: 1; }
+    100% { opacity: 0.4; }
+}
+
+</style>
+
+</head>
+<body>
+
+<div id="wrapper">
+<div id="chat"></div>
+
+<div id="inputArea">
+  <textarea id="input" placeholder="Schreib etwas an YuiAI..."></textarea>
+  <button id="sendBtn" onclick="sendChat()">➤</button>
+</div>
+
+<audio id="player" style="display:none;"></audio>
+
+<script>
+let chat = document.getElementById("chat");
+let input = document.getElementById("input");
+let player = document.getElementById("player");
+
+// Normale Bubble
+function appendBubble(text, sender = "ai") {
+  let bubble = document.createElement("div");
+  bubble.classList.add("bubble", sender);
+
+  let textNode = document.createElement("div");
+  textNode.className = "bubble-text";
+  textNode.textContent = text;
+  bubble.appendChild(textNode);
+
+  if (sender === "ai") {
+    let btn = document.createElement("button");
+    btn.className = "tts-btn";
+    btn.textContent = "🔊 Vorlesen";
+
+    btn.onclick = async () => {
+      btn.disabled = true;
+      let old = btn.textContent;
+      btn.textContent = "🔊 Audio wird erzeugt…";
+
+      await speak(text);
+
+      btn.textContent = old;
+      btn.disabled = false;
+    };
+
+    bubble.appendChild(btn);
+  }
+
+  chat.appendChild(bubble);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+
+// SEND CHAT
+async function sendChat() {
+    let text = input.value.trim();
+    if (!text) return;
+
+    appendBubble(text, "user");
+    input.value = "";
+    input.focus();
+
+    // Placeholder
+    let thinkingBubble = document.createElement("div");
+    thinkingBubble.classList.add("bubble", "ai");
+    thinkingBubble.textContent = "YuiAI denkt nach…";
+    chat.appendChild(thinkingBubble);
+    chat.scrollTop = chat.scrollHeight;
+
+    // Anfrage an Server
+    let res = await fetch("/chat", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ text })
+    });
+
+    let data = await res.json();
+
+    // FEHLER ?
+    if (!data.ok) {
+        thinkingBubble.textContent = "Fehler: " + (data.error || "unbekannt");
+        return;
+    }
+
+    // Placeholder löschen
+    thinkingBubble.remove();
+
+    // NORMALE AI-BUBBLE MIT TTS ERZEUGEN
+    appendBubble(data.reply, "ai");
+}
+
+
+// TTS
+async function speak(text) {
+    console.log("TTS Trigger:", text);
+
+    const oldTitle = document.title;
+    document.title = "🔊 Spreche…";
+
+    try {
+        let res = await fetch("/tts", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ text })
+        });
+
+        let blob = await res.blob();
+        let url = URL.createObjectURL(blob);
+
+        player.src = url;
+        await player.play();
+    } catch (e) {
+        console.error("TTS Fehler:", e);
+    }
+
+    document.title = oldTitle;
+}
+
+
+// ENTER = senden, SHIFT+ENTER = neue Zeile
+input.addEventListener("keydown", (e)=>{
+    if (e.key === "Enter") {
+        if (!e.shiftKey) {
+            e.preventDefault();
+            sendChat();
+        }
+    }
+});
+</script>
+</div>
+
+</body>
+</html>
