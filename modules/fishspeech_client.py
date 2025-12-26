@@ -12,6 +12,9 @@ LOCK = threading.Lock()
 REF_WAV = Path("voicefiles/Ref_Nao.wav")
 REF_TEXT = "ん?あ、なんかすごく飲みやすい赤ワインですね。"
 
+if not REF_WAV.exists():
+    raise RuntimeError(f"Missing voice reference WAV: {REF_WAV}")
+
 def generate_tts(text: str) -> bytes:
     if not LOCK.acquire(blocking=False):
         raise RuntimeError("FishSpeech busy")
