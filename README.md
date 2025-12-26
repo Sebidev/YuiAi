@@ -178,8 +178,9 @@ And a matching reference transcript inside `modules/fishspeech_client.py`:
 
 ### Git / Privacy Note
 
-Do **not** commit personal voice samples.
+Do not commit personal voice samples.
 Add this to `.gitignore`:
+
 ---
 
 ## Running YuiAI
