@@ -4,7 +4,7 @@ env/
 __pycache__/
 *.pyc
 *.pyo
-coqui_models/
+models/
 samples/
 tts_out/
 data/
@@ -17,3 +17,4 @@ webui/node_modules/
 webui/dist/
 data/memory.json
 data/embeddings.npy
+voicefiles/

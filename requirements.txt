@@ -2,15 +2,15 @@
 fastapi==0.110.0
 uvicorn==0.29.0
 
-# --- Transformer / Qwen ---
-transformers==4.40.0
-torch==2.2.0
-sentencepiece==0.2.0
+# --- HTTP / IPC ---
+requests==2.32.3
 
-# --- Memory (Semantic Search) ---
+# --- Serialization (FishSpeech) ---
+ormsgpack==1.5.0
+
+# --- Memory / Embeddings ---
 sentence-transformers==2.6.0
 numpy==1.26.4
 
 # --- Utils ---
 protobuf==4.25.3
-requests==2.32.3
